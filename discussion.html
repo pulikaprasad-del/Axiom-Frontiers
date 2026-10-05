@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Executive Discussion Hub — Axiom Frontier">
+  <title>Executive Discussion Hub — Axiom Frontier</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="hub-page">
+  <header class="nav-wrap">
+    <nav class="nav">
+      <a class="brand" href="index.html">
+        <span class="brand-mark"><i></i><i></i><i></i></span>
+        <span>AXIOM <b>FRONTIER</b></span>
+      </a>
+      <a class="nav-cta" href="index.html">Back to site ↗</a>
+    </nav>
+  </header>
+
+  <main class="hub-main">
+    <p class="eyebrow"><span class="pulse"></span> EXECUTIVE DISCUSSION HUB</p>
+    <h1>Start with the<br><span>problem worth solving.</span></h1>
+    <p class="hub-intro">
+      Give us a little context, then put the first two pieces of your idea on the table.
+      We use this to understand how you think before opening a longer conversation.
+    </p>
+
+    <form id="hubForm" class="hub-form">
+      <div class="hp-field" aria-hidden="true">
+        <label>Website <input name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+      <div class="hub-profile-grid">
+        <label>
+          <span>01 · YOUR NAME</span>
+          <input name="name" type="text" required maxlength="100" autocomplete="name" placeholder="Your name">
+        </label>
+        <label>
+          <span>02 · PREFERRED EMAIL</span>
+          <input name="email" type="email" required maxlength="160" autocomplete="email" placeholder="you@example.com">
+        </label>
+        <label>
+          <span>03 · AGE / GRADE</span>
+          <input name="age_grade" type="text" required maxlength="40" placeholder="e.g. 15 / Grade 10">
+        </label>
+        <label>
+          <span>04 · SCHOOL</span>
+          <input name="school" type="text" required maxlength="160" autocomplete="organization" placeholder="School name">
+        </label>
+        <label class="wide">
+          <span>05 · AREA OF LIVING</span>
+          <input name="area" type="text" required maxlength="120" autocomplete="address-level2" placeholder="City / region only — please don't enter a full address">
+        </label>
+      </div>
+
+      <label>
+        <span>06 · WHAT ARE YOU TRYING TO UNDERSTAND?</span>
+        <textarea name="question" required maxlength="1200" placeholder="Describe the question, contradiction, observation, or problem that keeps you thinking."></textarea>
+      </label>
+
+      <label>
+        <span>07 · WHAT DO YOU THINK MIGHT BE TRUE?</span>
+        <textarea name="hypothesis" required maxlength="1200" placeholder="Give your current hypothesis, proposed approach, model, or direction—even if it is incomplete."></textarea>
+      </label>
+
+      <button class="button button-light" type="submit">Continue <span>↗</span></button>
+      <p class="hub-privacy">Please share only the information needed to start the conversation. For your location, use a city or region rather than a street address.</p>
+      <p class="application-note">If you filled the “Start a conversation” page, upload a screenshot onto your application form.</p>
+      <small id="hubStatus" class="hub-status" aria-live="polite"></small>
+    </form>
+
+    <section id="hubGate" class="hub-gate" hidden>
+      <div class="gate-blur">
+        <div class="gate-line"></div><div class="gate-line short"></div><div class="gate-line"></div>
+      </div>
+      <div class="gate-card">
+        <div class="gate-icon">✦</div>
+        <p class="kicker">ONE LAST STEP</p>
+        <h2>Upload your screenshot.</h2>
+        <p>Your conversation has been submitted. Click <b>Done</b> to unblur this page and take a screenshot of your completed answers. Upload that screenshot onto your application form.</p>
+        <div class="mail-confirm">✓ Answers saved — screenshot step ready</div>
+        <button id="doneButton" class="button button-light gate-done" type="button">Done <span>↗</span></button>
+        <small id="screenshotHint">Click Done to reveal your completed answers for the screenshot.</small>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const f = document.getElementById('hubForm');
+    const g = document.getElementById('hubGate');
+    const status = document.getElementById('hubStatus');
+    const doneButton = document.getElementById('doneButton');
+    const screenshotHint = document.getElementById('screenshotHint');
+    let screenshotMode = false;
+
+    doneButton.addEventListener('click', () => {
+      if (!screenshotMode) {
+        screenshotMode = true;
+        f.classList.add('screenshot-mode');
+        doneButton.innerHTML = 'Done — I took the screenshot <span>↗</span>';
+        screenshotHint.textContent = 'Take the screenshot now. When you are finished, click Done again to return to the website.';
+        f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      f.classList.remove('screenshot-mode');
+      f.classList.add('submitted');
+      doneButton.disabled = true;
+      doneButton.innerHTML = 'Returning…';
+      screenshotHint.textContent = 'Your answers are blurred again. Returning you to the website…';
+      setTimeout(() => { window.location.href = 'index.html'; }, 650);
+    });
+
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const submitButton = f.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      submitButton.innerHTML = 'Continue <span>↗</span>';
+      status.textContent = 'Preparing your screenshot step…';
+
+      const data = new FormData(f);
+      const payload = {
+        name: data.get('name'),
+        email: data.get('email'),
+        ageGrade: data.get('age_grade'),
+        school: data.get('school'),
+        city: data.get('area'),
+        question: data.get('question'),
+        hypothesis: data.get('hypothesis'),
+        website: data.get('website') || ''
+      };
+
+      // Always let the visitor continue. Save the answers locally first.
+      try { localStorage.setItem('axiomFrontierDiscussionDraft', JSON.stringify(payload)); } catch (_) {}
+
+      // Email delivery is completely non-blocking. The screenshot flow must never
+      // depend on a server endpoint being available (especially on GitHub Pages).
+      const endpoints = ['/api/submit-discussion', '/.netlify/functions/submit-discussion'];
+      const sendInBackground = async () => {
+        for (const endpoint of endpoints) {
+          try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 1800);
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify(payload),
+              signal: controller.signal,
+              keepalive: true
+            });
+            clearTimeout(timer);
+            if (response.ok) return;
+          } catch (_) {}
+        }
+      };
+      sendInBackground();
+
+      // Never show a network error and never replace Continue with Try again.
+      f.classList.add('submitted');
+      submitButton.disabled = false;
+      submitButton.innerHTML = 'Continue <span>↗</span>';
+      status.textContent = 'Your answers are ready. Continue to the screenshot step below.';
+
+      g.hidden = false;
+      requestAnimationFrame(() => {
+        g.classList.add('show');
+        g.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+  </script>
+</body>
+</html>
