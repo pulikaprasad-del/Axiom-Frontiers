@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/submit-discussion.js": {
+      "runtime": "nodejs20.x"
+    }
+  }
+}

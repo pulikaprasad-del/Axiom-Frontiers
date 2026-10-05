@@ -1,0 +1,8 @@
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/api/submit-discussion"
+  to = "/.netlify/functions/submit-discussion"
+  status = 200
+  force = true
